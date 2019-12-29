@@ -1,5 +1,6 @@
 import bpy
 
+from .backport import get_user_preferences
 
 mblab_base_bone_names = {  # mblab_bone : DEF-metarig_bone
     "upperarm_twist_L": "DEF-upperarm_L",
@@ -50,7 +51,7 @@ mblab_base_bone_names_legacy_mode = {  # mblab_bone : DEF-metarig_bone
     "thigh_L":       "DEF-thigh.02_L",
     "thigh_twist_R": "DEF-thigh.01_R",
     "thigh_R":       "DEF-thigh.02_R",
-    
+
     "calf_twist_L":  "DEF-calf.01_L",
     "calf_L":        "DEF-calf.02_L",
     "calf_twist_R":  "DEF-calf.01_R",
@@ -71,9 +72,10 @@ mblab_base_bone_names_legacy_mode = {  # mblab_bone : DEF-metarig_bone
 
 
 def legacy_mode():
-    addons = bpy.context.preferences.addons
-    if "legacy_mode" in addons['rigify'].preferences:
-        if addons['rigify'].preferences['legacy_mode'] == 1:
+    prefs = get_user_preferences(bpy.context)
+
+    if "legacy_mode" in prefs.addons['rigify'].preferences:
+        if prefs.addons['rigify'].preferences['legacy_mode'] == 1:
             return True
     return False
 

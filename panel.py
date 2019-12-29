@@ -1,5 +1,6 @@
 import bpy
 
+from .backport import get_user_preferences
 
 class RIGIFYFORMBLAB_OT_enable_rigify(bpy.types.Operator):
     bl_idname = "object.rigifyformblab_enable_rigify"
@@ -8,14 +9,15 @@ class RIGIFYFORMBLAB_OT_enable_rigify(bpy.types.Operator):
     bl_options = {'REGISTER', 'UNDO'}
 
     def execute(self, context):
-        bpy.ops.preferences.addon_enable(module="rigify")
+        prefs = get_user_preferences(bpy.context)
+        prefs.addon_enable(module="rigify")
         return {'FINISHED'}
 
 
 class RIGIFYFORMBLAB_PT_panel(bpy.types.Panel):
     bl_idname = "RIGIFYFORMBLAB_PT_panel"
     bl_space_type = 'VIEW_3D'
-    bl_region_type = 'UI'
+    bl_region_type = 'TOOLS' if bpy.app.version < (2, 80) else 'UI'
     bl_label = "Rigify for MB-Lab"
     # bl_context = "objectmode"
     bl_category = "Rigify for MB-Lab"
@@ -29,7 +31,8 @@ class RIGIFYFORMBLAB_PT_panel(bpy.types.Panel):
 
         col = self.layout.column()
 
-        if not "rigify" in context.preferences.addons.keys():
+        prefs = get_user_preferences(bpy.context)
+        if not "rigify" in prefs.addons.keys():
             col.operator('object.rigifyformblab_enable_rigify')
         else:
             col.operator('object.rigifyformblab_addrig')

@@ -1,7 +1,7 @@
 import math
 import bpy
 from mathutils import Vector
-
+from .backport import get_user_preferences, hide_viewport, set_active_object, select_get, select_set
 
 class RIGIFYFORMBLAB_OT_addrig(bpy.types.Operator):
     bl_idname = "object.rigifyformblab_addrig"
@@ -9,16 +9,16 @@ class RIGIFYFORMBLAB_OT_addrig(bpy.types.Operator):
     bl_description = "Add Meta Rig"
     bl_options = {'REGISTER', 'UNDO'}
 
-    bool_straight_legs: bpy.props.BoolProperty(name="Straight Legs",
+    bool_straight_legs = bpy.props.BoolProperty(name="Straight Legs",
                                                description="",
                                                default=False)
 
-    knee_offset_y: bpy.props.FloatProperty(name="Knee y Offset",
+    knee_offset_y = bpy.props.FloatProperty(name="Knee y Offset",
                                                 default=0.0,  # -0.01,
                                                 step=0.3,
                                                 precision=3)
 
-    bool_super_finger: bpy.props.BoolProperty(name="Finger Rig Type: limbs.super_finger (non-legacy)",
+    bool_super_finger = bpy.props.BoolProperty(name="Finger Rig Type: limbs.super_finger (non-legacy)",
                                               description="",
                                               default=False)
 
@@ -76,7 +76,7 @@ class RIGIFYFORMBLAB_OT_addrig(bpy.types.Operator):
 
         bpy.ops.object.mode_set(mode='OBJECT')
         bpy.ops.object.select_all(action='DESELECT')
-        meta_rig.select_set(True)
+        select_set(meta_rig, True)
         for pbone in meta_rig.pose.bones:
             for entry in db:
                 if pbone.bone.name.strip('_L').strip('_R') in entry['bname']:
@@ -115,9 +115,9 @@ class RIGIFYFORMBLAB_OT_addrig(bpy.types.Operator):
         is_ik_rig = False
 
         legacy_mode = False
-        if "legacy_mode" in context.preferences.addons['rigify'].preferences:
-            legacy_mode = True if context.preferences.addons[
-                'rigify'].preferences['legacy_mode'] == 1 else False
+        prefs = get_user_preferences(bpy.context)
+        if "legacy_mode" in prefs.addons['rigify'].preferences:
+            legacy_mode = True if prefs.addons['rigify'].preferences['legacy_mode'] == 1 else False
 
         # Get MB-lab rig
         mblab_mesh = None
@@ -150,9 +150,10 @@ class RIGIFYFORMBLAB_OT_addrig(bpy.types.Operator):
         bpy.ops.object.select_all(action='DESELECT')
 
         # Duplicate MB-lab rig
-        mblab_rig.hide_viewport = False
-        context.view_layer.objects.active = mblab_rig
-        mblab_rig.select_set(True)
+        hide_viewport(mblab_rig, False)
+        set_active_object(context, mblab_rig)
+
+        select_set(mblab_rig, True)
         bpy.ops.object.mode_set(mode='OBJECT')
         bpy.ops.object.duplicate()
         meta_rig = context.active_object
@@ -187,7 +188,7 @@ class RIGIFYFORMBLAB_OT_addrig(bpy.types.Operator):
                 if not ("rot_helper" in bone_name or "muscle" in bone_name):
                     for constraint in bone.constraints.values():
                         bone.constraints.remove(constraint)
-            
+
             bpy.ops.object.mode_set(mode='OBJECT')
 
 
@@ -209,9 +210,9 @@ class RIGIFYFORMBLAB_OT_addrig(bpy.types.Operator):
                 thigh_name = "thigh" + ext
                 calf_name = "calf" + ext
 
-                meta_rig.select_set(False)
-                mblab_rig.select_set(True)
-                context.view_layer.objects.active = mblab_rig
+                select_set(Meta_rig, False)
+                select_set(mblab_rig, True)
+                set_active_object(context, mblab_rig)
 
                 bpy.ops.object.mode_set(mode='EDIT')
 
@@ -227,7 +228,7 @@ class RIGIFYFORMBLAB_OT_addrig(bpy.types.Operator):
 
                 if not is_muscle_rig:
                     thigh_twist_name = "thigh_twist" + ext
-                    calf_twist_name = "calf_twist" + ext                    
+                    calf_twist_name = "calf_twist" + ext
                     thigh_twist_len = context.active_object.data.edit_bones[thigh_twist_name].length
                     thigh_twist_tail = thigh_twist_len * \
                         ((new_knee_pos - thigh_head).normalized()) + thigh_head
@@ -241,7 +242,7 @@ class RIGIFYFORMBLAB_OT_addrig(bpy.types.Operator):
 
                 meta_rig.select_set(True)
                 mblab_rig.select_set(False)
-                context.view_layer.objects.active = meta_rig
+                set_active_object(context, mblab_rig)
 
                 bpy.ops.object.mode_set(mode='EDIT')
 
@@ -307,12 +308,12 @@ class RIGIFYFORMBLAB_OT_addrig(bpy.types.Operator):
 
         # Legacy mode settings:
         if legacy_mode:
-            
+
             # legacy_mode finger roll
             for ext in ["_L","_R"]:
                 for bone in meta_rig.data.edit_bones["hand" + ext].children_recursive:
                     bone.roll = bone.roll + math.pi
-        
+
             # legacy_mode unparent "twist" bones
             for bone_name, bone in meta_rig.data.edit_bones.items():
                 if "twist" in bone_name:
@@ -328,7 +329,7 @@ class RIGIFYFORMBLAB_OT_addrig(bpy.types.Operator):
                 bone_heel.tail = Vector((heel_tail_x, mblab_rig.location.y, mblab_rig.location.z))
                 bone_heel.use_connect = True
                 bone_heel.parent = meta_rig.data.edit_bones["calf" + ext]
-    
+
         else:
             for ext in ["_L", "_R"]:
                 bone_name = "heel" + ext
@@ -366,7 +367,7 @@ class RIGIFYFORMBLAB_OT_addrig(bpy.types.Operator):
 
             meta_rig.pose.bones["pelvis"].rigify_type = "spine"
             meta_rig.pose.bones["pelvis"].rigify_parameters.chain_bone_controls = "1, 2, 3, 4"
-            
+
             meta_rig.pose.bones["neck"].rigify_type = "neck_short"
 
             for bone_name in ["clavicle_L", "clavicle_R", "breast_L", "breast_R"]:

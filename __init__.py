@@ -15,11 +15,11 @@
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 bl_info = {
-    "name": "Rigify for MB-Lab",
-    "description": "Rigify for MB-Lab",
+    "name": "MB-Lab-Rigify",
+    "description": "Backported rigify rig for MB-Lab",
     "author": "Daniel Engler",
-    "version": (0, 6, 1),
-    "blender": (2, 80, 0),
+    "version": (2, 79, 0),
+    "blender": (2, 79, 0),
     "location": "View3D > Tools > Rigify for MB-Lab",
     "category": "Characters"
 }
@@ -31,25 +31,29 @@ from .generate_rig import RIGIFYFORMBLAB_OT_generaterig
 from .panel import RIGIFYFORMBLAB_OT_enable_rigify, RIGIFYFORMBLAB_PT_panel
 from .rename_vertex_groups import (RIGIFYFORMBLAB_OT_rename_vertex_groups,
                                    RIGIFYFORMBLAB_OT_unrename_vertex_groups)
+from .backport import make_annotations
 
+# List of the name of the classes inherited from Blender types like
+# AddonPreferences, Operator, Panel etc
+# Dependency order matters
+
+classes = (
+   RIGIFYFORMBLAB_OT_addrig,
+   RIGIFYFORMBLAB_OT_rename_vertex_groups,
+   RIGIFYFORMBLAB_OT_unrename_vertex_groups,
+   RIGIFYFORMBLAB_OT_generaterig,
+   RIGIFYFORMBLAB_OT_enable_rigify,
+   RIGIFYFORMBLAB_PT_panel
+)
 
 def register():
-   bpy.utils.register_class(RIGIFYFORMBLAB_OT_addrig)
-   bpy.utils.register_class(RIGIFYFORMBLAB_OT_rename_vertex_groups)
-   bpy.utils.register_class(RIGIFYFORMBLAB_OT_unrename_vertex_groups)
-   bpy.utils.register_class(RIGIFYFORMBLAB_OT_generaterig)
-   bpy.utils.register_class(RIGIFYFORMBLAB_OT_enable_rigify)
-   bpy.utils.register_class(RIGIFYFORMBLAB_PT_panel)
+    for cls in classes:
+        make_annotations(cls)
+        bpy.utils.register_class(cls)
 
-
-def unregister():
-   bpy.utils.unregister_class(RIGIFYFORMBLAB_PT_panel)
-   bpy.utils.unregister_class(RIGIFYFORMBLAB_OT_enable_rigify)
-   bpy.utils.unregister_class(RIGIFYFORMBLAB_OT_generaterig)
-   bpy.utils.unregister_class(RIGIFYFORMBLAB_OT_unrename_vertex_groups)
-   bpy.utils.unregister_class(RIGIFYFORMBLAB_OT_rename_vertex_groups)
-   bpy.utils.unregister_class(RIGIFYFORMBLAB_OT_addrig)
-
+def unregister():  # note how unregistering is done in reverse
+    for cls in reversed(classes):
+        bpy.utils.unregister_class(cls)
 
 if __name__ == "__main__":
     register()

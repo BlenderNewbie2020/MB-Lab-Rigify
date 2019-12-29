@@ -1,6 +1,7 @@
 import bpy
 from mathutils import Vector
 from mathutils import Color
+from .backport import get_user_preferences, set_active_object
 
 def is_finger(name):
     finger_names = ['thumb', 'index', 'middle', 'ring', 'pinky']
@@ -205,9 +206,9 @@ class RIGIFYFORMBLAB_OT_generaterig(bpy.types.Operator):
                 mblab_orig_bones.append(pbone.name)
 
         legacy_mode = False
-        if "legacy_mode" in context.preferences.addons['rigify'].preferences:
-            legacy_mode = True if context.preferences.addons[
-                'rigify'].preferences['legacy_mode'] == 1 else False
+        prefs = get_user_preferences(bpy.context)
+        if "legacy_mode" in prefs.addons['rigify'].preferences:
+            legacy_mode = True if prefs.addons['rigify'].preferences['legacy_mode'] == 1 else False
 
         # Muscle rig?
         for bone_name in bpy.context.active_object.data.bones.keys():
@@ -217,16 +218,16 @@ class RIGIFYFORMBLAB_OT_generaterig(bpy.types.Operator):
 
         if not is_muscle_rig:
             meta_rig = bpy.context.active_object
-            bpy.context.view_layer.objects.active = meta_rig
+            set_active_object(context, meta_rig)
             set_rigify_data(meta_rig)
             bpy.ops.pose.rigify_generate()
         else:
             org_meta_rig = bpy.context.active_object
 
             bpy.ops.object.mode_set(mode='OBJECT')
-            
+
             # Duplicate meta rig twice as muscle rig and meta rig (copy)
-            bpy.context.view_layer.objects.active = org_meta_rig
+            set_active_object(context, org_meta_rig)
             bpy.ops.object.duplicate()
             muscle_rig = bpy.context.active_object
             bpy.ops.object.duplicate()
@@ -238,8 +239,8 @@ class RIGIFYFORMBLAB_OT_generaterig(bpy.types.Operator):
 
             # Delete muscle and helper bones from meta rig
             bpy.ops.object.select_all(action='DESELECT')
-            meta_rig.select_set(True)
-            bpy.context.view_layer.objects.active = meta_rig
+            select_set(meta_rig, True)
+            set_active_object(context, meta_rig)
 
             bpy.ops.object.mode_set(mode='EDIT')
             meta_rig.data.layers[1] = True
@@ -253,8 +254,8 @@ class RIGIFYFORMBLAB_OT_generaterig(bpy.types.Operator):
 
             # Start work on muscle rig
             bpy.ops.object.select_all(action='DESELECT')
-            muscle_rig.select_set(True)
-            bpy.context.view_layer.objects.active = muscle_rig
+            select_set(muscle_rig, True)
+            set_active_object(context, muscle_rig)
             bpy.ops.object.mode_set(mode='EDIT')
 
             # Rename muscle bones
@@ -291,10 +292,10 @@ class RIGIFYFORMBLAB_OT_generaterig(bpy.types.Operator):
                 if "rot_helper" in name or "muscle" in name:
                     if "MCH" not in bone.parent.name and "DEF" not in bone.parent.name:
                         legacy_parent_names = {
-                            "thigh_L":"DEF-thigh.01_L", 
-                            "thigh_R":"DEF-thigh.01_R", 
-                            "calf_L":"DEF-calf.01_L", 
-                            "calf_R":"DEF-calf.01_R", 
+                            "thigh_L":"DEF-thigh.01_L",
+                            "thigh_R":"DEF-thigh.01_R",
+                            "calf_L":"DEF-calf.01_L",
+                            "calf_R":"DEF-calf.01_R",
                             "upperarm_L":"DEF-upperarm.01_L",
                             "upperarm_R":"DEF-upperarm.01_R",
                             "lowerarm_L":"DEF-lowerarm.01_L",
@@ -310,7 +311,7 @@ class RIGIFYFORMBLAB_OT_generaterig(bpy.types.Operator):
                     else:
                         parent_name = bone.parent.name
                     muscle_parents[name] = parent_name
-                    
+
 
             # Unparent muscle bones - muscle rig
             for name, bone in bpy.context.active_object.data.edit_bones.items():
@@ -369,23 +370,23 @@ class RIGIFYFORMBLAB_OT_generaterig(bpy.types.Operator):
             # Generate Rigify rig
             bpy.ops.object.mode_set(mode='OBJECT')
             bpy.ops.object.select_all(action='DESELECT')
-            meta_rig.select_set(True)
-            bpy.context.view_layer.objects.active = meta_rig
+            select_set(meta_rig, True)
+            set_active_object(context, meta_rig)
             set_rigify_data(meta_rig)
             bpy.ops.pose.rigify_generate()
             rigify_rig = bpy.context.active_object
 
             # Delete meta rig (copy)
             bpy.ops.object.select_all(action='DESELECT')
-            meta_rig.select_set(True)
-            bpy.context.view_layer.objects.active = meta_rig
+            select_set(meta_rig, True)
+            set_active_object(context, meta_rig)
             bpy.ops.object.delete(use_global=False)
 
             # Join muscle rig with generated Rigify rig
             bpy.ops.object.select_all(action='DESELECT')
-            muscle_rig.select_set(True)
-            rigify_rig.select_set(True)
-            bpy.context.view_layer.objects.active = rigify_rig
+            select_set(muscle_rig, True)
+            select_set(rigify_rig, True)
+            set_active_object(context, rigify_rig)
             bpy.ops.object.join()
 
             # Re-parent and reconnect muscle bones
@@ -415,7 +416,7 @@ class RIGIFYFORMBLAB_OT_generaterig(bpy.types.Operator):
             for bone_name, constraint in subtargets.items():
                 for c_name, sub_name in constraint.items():
                     rigify_rig.pose.bones[bone_name].constraints[c_name].subtarget = sub_name
-        
+
 
         rigify_rig = bpy.context.active_object
 
@@ -440,14 +441,14 @@ class RIGIFYFORMBLAB_OT_generaterig(bpy.types.Operator):
             rigify_rig.data.edit_bones[name].tail.x = m[0]
             rigify_rig.data.edit_bones[name].head.z = m[2]
             rigify_rig.data.edit_bones[name].tail.z = m[2]
-        
+
         bpy.ops.object.mode_set(mode='POSE')
 
-        # Set "DEF-spine03" B-Bone handle
-        bpy.context.object.data.bones["DEF-spine03"].bbone_handle_type_end = 'ABSOLUTE'
-        
+        # TODO: Set "DEF-spine03" B-Bone handle
+        # bpy.context.object.data.bones["DEF-spine03"].bbone_handle_type_end = 'ABSOLUTE'
+
         # Fix custom shape scale
-        if legacy_mode:        
+        if legacy_mode:
             rigify_rig.pose.bones["hand.ik_L"].custom_shape_scale = 2.5
             rigify_rig.pose.bones["hand.ik_R"].custom_shape_scale = 2.5
             rigify_rig.pose.bones["hand.fk_L"].custom_shape_scale = 2.5
@@ -458,7 +459,7 @@ class RIGIFYFORMBLAB_OT_generaterig(bpy.types.Operator):
 
         if is_muscle_rig:
             # clean extra bones left behind
-            # TODO: for some reason when I set the layers it results in 
+            # TODO: for some reason when I set the layers it results in
             # some bones from the original rig left behind,
             # but it's a bit wonky. The names have .00X after them, because
             # they have the same name as the rigify_rig bones. I need to
@@ -469,7 +470,7 @@ class RIGIFYFORMBLAB_OT_generaterig(bpy.types.Operator):
             # then that bone should be deleted.
             bpy.ops.object.mode_set(mode='OBJECT')
             bpy.ops.object.select_all(action='DESELECT')
-            rigify_rig.select_set(True)
+            select_set(rigify_rig, True)
             bpy.ops.object.mode_set(mode='EDIT')
             for bone in rigify_rig.pose.bones:
                 for i in range(0, len(mblab_orig_bones)):
